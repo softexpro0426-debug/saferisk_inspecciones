@@ -1,0 +1,3 @@
+# Copiar MAPS_API_KEY al archivo local.properties generado por Flutter.
+# Mantener las rutas sdk.dir y flutter.sdk propias de cada equipo.
+MAPS_API_KEY=REEMPLAZAR_CON_CLAVE_ANDROID

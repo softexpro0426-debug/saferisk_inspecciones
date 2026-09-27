@@ -1,0 +1,2 @@
+// Copiar a Local.xcconfig y configurar la clave de Maps para iOS.
+MAPS_API_KEY = REEMPLAZAR_CON_CLAVE_IOS

@@ -1,0 +1,76 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+**/build/
+coverage/
+**/doc/api/
+*.symbols
+app.*.map.json
+
+# Configuración local y credenciales
+.env
+.env.*
+!.env.example
+/config/*.json
+!/config/example.json
+**/local.properties
+/ios/Flutter/Local.xcconfig
+**/key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.mobileprovision
+*.cer
+*.key
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Android
+**/.gradle/
+**/.kotlin/
+**/.cxx/
+**/captures/
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+
+# iOS
+**/Pods/
+**/.symlinks/
+**/DerivedData/
+**/xcuserdata/
+**/*.xcuserstate
+/ios/Flutter/ephemeral/
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/flutter_export_environment.sh
+/ios/Runner/GeneratedPluginRegistrant.*
+
+# Editores y sistema operativo
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.swp
+*.swo
+*.tmp
+*.bak
+*.pyc
+__pycache__/
+.history/
+.build/
+.swiftpm/
+migrate_working_dir/
+.codex/
+.agents/
+
+# pubspec.lock y los recursos gráficos se versionan en esta aplicación.
