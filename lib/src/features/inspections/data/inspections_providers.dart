@@ -15,7 +15,7 @@ import 'repositories/en_route_repository_impl.dart';
 
 final inspectionsRemoteDataSourceProvider =
     Provider<InspectionsRemoteDataSource>((ref) {
-      return InspectionsRemoteDataSourceImpl(ref.watch(dioProvider));
+      return InspectionsRemoteDataSourceImpl(ref.watch(flowConnectDioProvider));
     });
 
 final inspectionsRepositoryProvider = Provider<InspectionsRepository>((ref) {

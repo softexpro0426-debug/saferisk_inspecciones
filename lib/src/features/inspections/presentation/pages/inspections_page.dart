@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/network/network_error_message.dart';
 import '../../domain/entities/inspection_filter.dart';
 import '../controllers/inspections_controller.dart';
 import '../widgets/inspection_card.dart';
 import '../widgets/inspection_filters_sheet.dart';
-import 'inspection_detail_page.dart';
+import 'operational_inspection_page.dart';
 
 final class InspectionsPage extends ConsumerWidget {
   const InspectionsPage({super.key});
@@ -60,7 +61,10 @@ final class InspectionsPage extends ConsumerWidget {
                 error: (error, stackTrace) {
                   return SliverFillRemaining(
                     hasScrollBody: false,
-                    child: _ErrorState(onRetry: controller.refresh),
+                    child: _ErrorState(
+                      onRetry: controller.refresh,
+                      message: networkErrorMessage(error),
+                    ),
                   );
                 },
 
@@ -94,19 +98,24 @@ final class InspectionsPage extends ConsumerWidget {
                             return InspectionCard(
                               inspection: inspection,
                               onTap: () {
-                                final insurerCode = ref
-                                    .read(
-                                      inspectionsControllerProvider.notifier,
-                                    )
-                                    .filter
-                                    .aseguradora;
+                                final insurerCode =
+                                    inspection.insurerCode ??
+                                    ref
+                                        .read(
+                                          inspectionsControllerProvider
+                                              .notifier,
+                                        )
+                                        .filter
+                                        .aseguradora;
 
                                 Navigator.of(context).push(
                                   MaterialPageRoute<void>(
                                     builder: (_) {
-                                      return InspectionDetailPage(
-                                        inspection: inspection,
-                                        insurerCode: insurerCode,
+                                      return OperationalInspectionPage(
+                                        query: (
+                                          caseNumber: inspection.nroCaso,
+                                          insurerCode: insurerCode,
+                                        ),
                                       );
                                     },
                                   ),
@@ -452,7 +461,8 @@ final class _EmptyState extends StatelessWidget {
 }
 
 final class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.onRetry});
+  const _ErrorState({required this.onRetry, required this.message});
+  final String message;
 
   final VoidCallback onRetry;
 
@@ -492,8 +502,8 @@ final class _ErrorState extends StatelessWidget {
 
             const SizedBox(height: 8),
 
-            const Text(
-              'Comprueba tu conexión e inténtalo nuevamente.',
+            Text(
+              message,
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.neutralDark, fontSize: 13),
             ),

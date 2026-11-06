@@ -13,14 +13,16 @@ final inspectionsControllerProvider =
 final class InspectionsController extends AsyncNotifier<List<InspectionCase>> {
   InspectionFilter _filter = const InspectionFilter();
 
+  int _requestVersion = 0;
+
   InspectionFilter get filter => _filter;
 
   @override
   Future<List<InspectionCase>> build() {
-    return _search();
+    return _search(_filter);
   }
 
-  Future<List<InspectionCase>> _search() async {
+  Future<List<InspectionCase>> _search(InspectionFilter filter) async {
     final session = await ref.read(sessionStorageProvider).readSession();
 
     if (session == null) {
@@ -29,26 +31,23 @@ final class InspectionsController extends AsyncNotifier<List<InspectionCase>> {
 
     final repository = ref.read(inspectionsRepositoryProvider);
 
-    return repository.search(usuario: session.usuario, filter: _filter);
+    return repository.search(usuario: session.usuario, filter: filter);
   }
 
   Future<void> applyFilter(InspectionFilter filter) async {
     _filter = filter;
-
-    state = const AsyncLoading();
-
-    state = await AsyncValue.guard(_search);
+    await refresh();
   }
 
   Future<void> refresh() async {
-    state = await AsyncValue.guard(_search);
-  }
-
-  Future<void> clearFilters() async {
-    _filter = const InspectionFilter();
-
+    final requestVersion = ++_requestVersion;
+    final requestedFilter = _filter;
     state = const AsyncLoading();
-
-    state = await AsyncValue.guard(_search);
+    final result = await AsyncValue.guard(() => _search(requestedFilter));
+    if (ref.mounted && requestVersion == _requestVersion) {
+      state = result;
+    }
   }
+
+  Future<void> clearFilters() => applyFilter(const InspectionFilter());
 }

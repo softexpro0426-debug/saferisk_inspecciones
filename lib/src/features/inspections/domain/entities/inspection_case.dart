@@ -1,5 +1,6 @@
 final class InspectionCase {
   const InspectionCase({
+    this.insurerCode,
     required this.nroCaso,
     required this.nombre,
     required this.placa,
@@ -19,6 +20,7 @@ final class InspectionCase {
   });
 
   final int nroCaso;
+  final int? insurerCode;
   final String nombre;
   final String placa;
   final String estado;

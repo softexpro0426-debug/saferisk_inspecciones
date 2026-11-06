@@ -28,7 +28,7 @@ final class InspectionsRemoteDataSourceImpl
     );
 
     final response = await _dio.post<dynamic>(
-      'api/Consulta',
+      'api/movil/consulta',
       data: request.toJson(),
     );
 

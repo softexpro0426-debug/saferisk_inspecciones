@@ -4,19 +4,24 @@ final class ConsultationResponseDto {
   const ConsultationResponseDto({required this.cases});
 
   factory ConsultationResponseDto.fromJson(Map<String, dynamic> json) {
-    final rawCases = json['Casos'];
+    final rawCases = json.containsKey('Casos') ? json['Casos'] : json['casos'];
 
     if (rawCases is! List) {
-      return const ConsultationResponseDto(cases: []);
+      throw const FormatException(
+        'La respuesta no contiene una lista Casos/casos válida.',
+      );
     }
 
     return ConsultationResponseDto(
       cases: rawCases
-          .whereType<Map>()
-          .map(
-            (item) =>
-                InspectionCaseDto.fromJson(Map<String, dynamic>.from(item)),
-          )
+          .map((item) {
+            if (item is! Map) {
+              throw const FormatException(
+                'La lista Casos contiene un registro inválido.',
+              );
+            }
+            return InspectionCaseDto.fromJson(Map<String, dynamic>.from(item));
+          })
           .toList(growable: false),
     );
   }

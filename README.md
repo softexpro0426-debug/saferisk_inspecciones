@@ -1,8 +1,8 @@
 # SafeRisk Inspecciones
 
-Aplicación móvil para inspectores de SafeRisk. Permite consultar casos asignados y registrar su avance: **En camino → Llegada confirmada → Finalizada**. La inspección física se realiza fuera de la aplicación.
+Aplicación móvil para inspectores de SafeRisk. Permite consultar casos asignados y registrar su avance: **En camino → Llegada confirmada → Inspección iniciada → Finalizada**. La inspección física se realiza fuera de la aplicación.
 
-**Actualización:** 26 de septiembre de 2026 · America/Guayaquil  
+**Actualización:** 5 de noviembre de 2026 · America/Guayaquil  
 **Versión:** 1.0.0+1  
 **Plataformas presentes:** Android e iOS  
 **Identificador Android:** ec.saferisk.saferisk_inspecciones
@@ -35,7 +35,7 @@ Esta documentación describe el código del repositorio. No implica certificaci�
 | En camino | Registro de salida con coordenadas actuales mediante FlowConnect. |
 | Llegada | Google Maps, ubicación actual, actualización y centrado del mapa; confirmación de llegada. |
 | Finalización | Confirmación explícita del inspector y actualización mediante la API existente. |
-| Actividad | Resumen de pendientes y finalizadas de hoy; lista independiente de actividad reciente desde FlowConnect. |
+| Actividad | En curso: una tarjeta por aseguradora/caso con estado actual y próxima acción. Últimos movimientos: historial informativo sin enlaces. |
 | Perfil | Usuario, conexión, versión, términos y condiciones y cierre de sesión. |
 
 El acceso de Brokers presenta un diálogo con enlaces de tienda. Los destinos en [app_store_links.dart](lib/src/core/config/app_store_links.dart) contienen marcadores de posición y requieren configuración.
@@ -64,7 +64,7 @@ Las operaciones bloquean solicitudes simultáneas. Al reabrir un caso con llegad
 | Sesión | flutter_secure_storage. |
 | Progreso local | shared_preferences. |
 | Ubicación | geolocator y google_maps_flutter. |
-| Utilidades | connectivity_plus, intl, package_info_plus y url_launcher. |
+| Utilidades | connectivity_plus, package_info_plus y url_launcher. |
 
 Las restricciones exactas están en [pubspec.yaml](pubspec.yaml). [pubspec.lock](pubspec.lock) se versiona para conservar las dependencias resueltas.
 
@@ -91,11 +91,11 @@ Copiar [config/example.json](config/example.json) a config/local.json y reemplaz
       "FLOWCONNECT_API_KEY": "REEMPLAZAR_CON_CLAVE_AUTORIZADA"
     }
 
-El archivo local está excluido de Git. Ejecutar la app con:
+El archivo local está excluido de Git y se incluye como recurso al compilar. El arranque normal lo carga antes de crear los clientes HTTP. Ejecutar con:
 
-    flutter run --dart-define-from-file=config/local.json
+    flutter run
 
-También se admite --dart-define=FLOWCONNECT_API_KEY=... La aplicación ya no incluye una clave predeterminada en el código. Omitirla deja vacío el encabezado de FlowConnect y puede producir errores de autorización.
+También se admiten --dart-define-from-file=config/local.json y --dart-define=FLOWCONNECT_API_KEY=... El valor definido por compilación tiene prioridad sobre el archivo local. Se debe crear config/local.json a partir del ejemplo antes de compilar, incluso si se usa un valor por compilación. No hay clave predeterminada en el código; si falta un valor válido, se muestra un error de configuración sin enviar una clave vacía.
 
 URL base centralizadas en [app_config.dart](lib/src/core/config/app_config.dart):
 
@@ -167,13 +167,13 @@ Rutas relativas a cada base. La capitalización de los campos enviados se conser
 | Base | Método y ruta | Uso |
 | --- | --- | --- |
 | Principal | POST api/Ingreso | Acceso. |
-| Principal | POST api/Consulta | Casos y resumen de actividad. |
+| FlowConnect | POST api/movil/consulta | Listado, búsqueda y detalle de casos. |
 | Principal | POST api/Aseguradoras | Aseguradoras del usuario. |
 | Principal | POST api/ConfirmaLlegada | Registro de llegada. |
 | Principal | POST api/ConcluirServicio | Finalización. |
-| FlowConnect | GET api/consulta/dashboard | Indicadores. |
-| FlowConnect | POST api/consulta/seguimiento | En camino. |
-| FlowConnect | GET api/consulta/actividad-reciente | Últimos movimientos. |
+| FlowConnect | GET api/movil/dashboard | Indicadores. |
+| FlowConnect | POST api/movil/seguimiento | En camino. |
+| FlowConnect | GET api/movil/actividad-reciente | Últimos movimientos. |
 
 FlowConnect envía X-Api-Key y Accept: application/json. Dashboard y actividad reciente envían usuario como parámetro de URL.
 
@@ -182,19 +182,20 @@ FlowConnect envía X-Api-Key y Accept: application/json. Dashboard y actividad r
 | Operación | Solicitud y respuesta utilizada |
 | --- | --- |
 | Ingreso | Envía tipo_proceso: 0, usuario, clave y nueva_clave vacía. Lee respuesta, tipo_usuario y nombre_usuario. |
-| Consulta | Envía aseguradora, usuario, tipo_consulta, cedula, placa, nombre y nro_caso. Lee la lista Casos. El resumen consulta C y P. |
+| Consulta | Envía Aseguradora, Usuario, Tipo_Consulta, Cedula, Placa, Nombre y Nro_Caso como texto. Lee Casos y los campos descripcion_estado, fecha_ini, cedula, observaciones_casos, color_broker y color_inspector. Actividad ya no consulta C/P para un resumen paralelo. |
 | Aseguradoras | Envía usuario. |
 | En camino | Envía usuario, aseguradora como cadena, caso, estado: EnCamino y coordenadas. Evalúa mensaje y la confirmación «guardado correctamente». |
 | Llegada | Envía Aseguradora, Usuario, Nro_Caso, Fecha_hora_llegada en ISO 8601 y Coordenadas. Espera respuesta: true. |
 | Finalización | Envía Aseguradora, Usuario y Nro_Caso. Espera respuesta: true. |
 | Dashboard | Lee pendientes, pendientes_hoy, finalizadas, finalizadas_semana y asignadas_count. |
-| Actividad reciente | Lee un arreglo con id entero, titulo, estado y fecha válida. Conserva el orden del servidor. |
+| Actividad reciente | Lee aseguradora, caso, titulo, estadoActual, estadoSeguimiento y fecha. Ordena por movimiento más reciente. Agrupa En curso por aseguradora/caso usando el estadoActual del registro más reciente; conserva todos los eventos en el historial. |
 
 Ejemplo ilustrativo de actividad, sin datos de clientes:
 
     [
       {
-        "id": 12345,
+        "aseguradora": 4,
+        "caso": 12345,
         "titulo": "Inspección #12345",
         "estado": "FINALIZADO",
         "fecha": "2026-09-26T10:30:00"
@@ -214,7 +215,7 @@ El ingreso actual no devuelve tokens. No se implementan OAuth, refresh token ni 
 - Si el servidor confirma y falla el guardado local, el controlador conserva el resultado en memoria. Mientras ese proceso permanezca activo, el reintento repite únicamente el guardado.
 - Cerrar sesión elimina la sesión; conserva los estados locales de los casos.
 - Un 401 operativo de la API principal redirige al acceso. El ingreso maneja credenciales inválidas; FlowConnect mantiene su autorización independiente mediante API key.
-- Actividad reciente tiene carga, error, reintento y lista vacía independientes del resumen.
+- Actividad tiene una carga y actualización compartida para En curso e historial; cada sección tiene su mensaje de lista vacía.
 - Finalizar invalida las consultas de inspecciones, dashboard y ambas secciones de actividad.
 
 No hay cola de sincronización sin conexión. Si se pierde la respuesta remota o termina el proceso antes del guardado local, no se garantiza una operación exactamente una vez; resolverlo requiere conciliación o idempotencia del backend.
@@ -235,7 +236,7 @@ Recorrido manual sugerido:
 3. GPS desactivado y permisos denegados o bloqueados.
 4. En camino, llegada y finalización, con pulsaciones repetidas.
 5. Cierre y reapertura después de cada estado confirmado.
-6. Actividad reciente: título, estado y fecha iguales a la API; lista vacía y reintento.
+6. Actividad: una tarjeta por caso en curso, acceso solo para en camino/en sitio/iniciada, historial sin enlaces, sin doble estado y con fechas de movimiento; lista vacía y reintento.
 7. Refresco de actividad al finalizar y al deslizar.
 8. Pérdida de conexión, 401 operativo y cierre de sesión.
 
@@ -296,5 +297,17 @@ No se asignó una licencia de código abierto. El titular debe decidir las condi
 - Sin cola offline, sincronización entre dispositivos ni garantía de idempotencia remota.
 - El progreso local se identifica por número de caso, no por usuario o aseguradora; depende de la unicidad de ese número.
 - El estado local no sustituye una conciliación completa con el backend.
-- El resumen de actividad usa la API principal; la lista reciente usa FlowConnect.
+- Actividad usa únicamente actividad-reciente de FlowConnect; no repite el resumen de Inicio ni el listado de Inspecciones.
 - La configuración y compilación iOS requieren revisión en macOS.
+
+## Actividad y actualizaciones: contratos recibidos
+
+Ya está preparado el flujo de cinco estados (incluido Iniciar inspección), la apertura de casos desde Actividad reciente y la comprobación de versiones al arrancar.
+
+La comprobación de versiones está desactivada por defecto durante las pruebas (APP_UPDATES_ENABLED=false). Para reactivarla, ejecutar flutter run --dart-define=APP_UPDATES_ENABLED=true; consume GET api/movil/version de FlowConnect. Existe un único flujo operativo con mapa, inicio, finalización y persistencia cifrada por usuario, aseguradora y caso. Desde actividad solo se accede si estadoActual es en camino, en sitio o inspección iniciada. Consulta usa FlowConnect api/movil/consulta con el contrato actualizado. La limpieza aplicada el 27 de octubre de 2026 se detalla en docs/revision-limpieza-2026-10-26.md.
+
+Consultar [contratos, archivos de adaptación y activación](docs/integraciones-pendientes.md). Incluye las reglas de actualización obligatoria/opcional y los escenarios de validación manual.
+
+## Protección de sesión
+
+La sesión guardada se bloquea al abrir la app y al volver del segundo plano. Se puede desbloquear con biometría, bloqueo nativo del teléfono (PIN, patrón o contraseña, según el sistema) o revalidando usuario y contraseña de la misma cuenta. La protección conserva el avance de las inspecciones y evita nuevas solicitudes de negocio mientras está bloqueada. Ver docs/proteccion-sesion-2026-10-30.md para configuración y validación en dispositivo. Detener y recompilar tras incorporar los plugins; hot reload no basta.

@@ -36,13 +36,13 @@ final class ConsultationRequestDto {
 
   Map<String, dynamic> toJson() {
     return {
-      'aseguradora': aseguradora,
-      'usuario': usuario,
-      'tipo_consulta': tipoConsulta,
-      'cedula': cedula,
-      'placa': placa,
-      'nombre': nombre,
-      'nro_caso': nroCaso,
+      'Aseguradora': aseguradora,
+      'Usuario': usuario,
+      'Tipo_Consulta': tipoConsulta,
+      'Cedula': cedula,
+      'Placa': placa,
+      'Nombre': nombre,
+      'Nro_Caso': nroCaso.toString(),
     };
   }
 }

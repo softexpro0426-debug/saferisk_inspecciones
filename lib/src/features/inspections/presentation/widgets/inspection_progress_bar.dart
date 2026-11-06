@@ -1,41 +1,43 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
-
-enum InspectionWorkflowStep { assigned, enRoute, arrived, completed }
+import '../../domain/entities/operational_inspection.dart';
 
 final class InspectionProgressBar extends StatelessWidget {
   const InspectionProgressBar({required this.currentStep, super.key});
 
-  final InspectionWorkflowStep currentStep;
+  final OperationalStatus currentStep;
 
   @override
   Widget build(BuildContext context) {
-    final currentIndex = currentStep.index;
-
-    const steps =
-        <({InspectionWorkflowStep step, String label, IconData icon})>[
-          (
-            step: InspectionWorkflowStep.assigned,
-            label: 'Asignada',
-            icon: Icons.description_outlined,
-          ),
-          (
-            step: InspectionWorkflowStep.enRoute,
-            label: 'En camino',
-            icon: Icons.location_on_outlined,
-          ),
-          (
-            step: InspectionWorkflowStep.arrived,
-            label: 'Llegada',
-            icon: Icons.fact_check_outlined,
-          ),
-          (
-            step: InspectionWorkflowStep.completed,
-            label: 'Finalizada',
-            icon: Icons.task_alt_outlined,
-          ),
-        ];
+    final steps = <({OperationalStatus step, String label, IconData icon})>[
+      (
+        step: OperationalStatus.assigned,
+        label: 'Asignada',
+        icon: Icons.description_outlined,
+      ),
+      (
+        step: OperationalStatus.enRoute,
+        label: 'En camino',
+        icon: Icons.location_on_outlined,
+      ),
+      (
+        step: OperationalStatus.arrived,
+        label: 'Llegada',
+        icon: Icons.fact_check_outlined,
+      ),
+      (
+        step: OperationalStatus.started,
+        label: 'Iniciada',
+        icon: Icons.assignment_outlined,
+      ),
+      (
+        step: OperationalStatus.completed,
+        label: 'Finalizada',
+        icon: Icons.task_alt_outlined,
+      ),
+    ];
+    final currentIndex = steps.indexWhere((item) => item.step == currentStep);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -74,7 +76,8 @@ final class InspectionProgressBar extends StatelessWidget {
                       ),
                     ),
                     if (index != steps.length - 1)
-                      Expanded(
+                      SizedBox(
+                        width: 8,
                         child: Container(
                           height: 2,
                           color: index < currentIndex
@@ -140,7 +143,8 @@ final class _ProgressStep extends StatelessWidget {
         const SizedBox(height: 7),
         Text(
           label,
-          maxLines: 1,
+          maxLines: 2,
+          textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: foreground,

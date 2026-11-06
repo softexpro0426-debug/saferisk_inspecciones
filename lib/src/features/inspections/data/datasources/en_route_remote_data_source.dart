@@ -17,7 +17,7 @@ final class EnRouteRemoteDataSourceImpl implements EnRouteRemoteDataSource {
     required EnRouteRequestDto request,
   }) async {
     final response = await _dio.post<dynamic>(
-      'api/consulta/seguimiento',
+      'api/movil/seguimiento',
       data: request.toJson(),
     );
 

@@ -1,0 +1,6 @@
+# Copia este archivo como android/key.properties. No compartas el archivo real.
+# En Windows, usa / en la ruta absoluta del JKS.
+storeFile=C:/Users/TU_USUARIO/saferisk-upload.jks
+storePassword=
+keyAlias=saferisk-upload
+keyPassword=

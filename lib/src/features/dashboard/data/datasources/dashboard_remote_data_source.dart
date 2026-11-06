@@ -24,7 +24,7 @@ final class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
     }
 
     final response = await _dio.get<dynamic>(
-      'api/consulta/dashboard',
+      'api/movil/dashboard',
       queryParameters: {'usuario': cleanUser},
     );
 

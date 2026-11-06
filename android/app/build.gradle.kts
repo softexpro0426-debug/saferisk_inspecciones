@@ -13,6 +13,18 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+val uploadKeyProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.isFile) file.inputStream().use { load(it) }
+}
+val uploadKeyFile = uploadKeyProperties.getProperty("storeFile")
+    ?.takeIf { it.isNotBlank() }
+    ?.let { rootProject.file(it) }
+val hasUploadKey = uploadKeyFile?.isFile == true &&
+    listOf("storePassword", "keyAlias", "keyPassword").all {
+        !uploadKeyProperties.getProperty(it).isNullOrBlank()
+    }
+
 android {
     namespace = "ec.saferisk.saferisk_inspecciones"
 
@@ -38,10 +50,28 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasUploadKey) {
+                storeFile = uploadKeyFile
+                storePassword = uploadKeyProperties.getProperty("storePassword")
+                keyAlias = uploadKeyProperties.getProperty("keyAlias")
+                keyPassword = uploadKeyProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Temporal mientras configuramos firma de producción.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    doFirst {
+        check(hasUploadKey) {
+            "Falta configurar la firma de publicación. Crea android/key.properties a partir de android/key.properties.example y verifica la ruta del JKS."
         }
     }
 }

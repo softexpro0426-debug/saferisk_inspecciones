@@ -1,7 +1,14 @@
 import 'package:geolocator/geolocator.dart';
 
 final class LocationService {
-  Future<Position> getCurrentPosition() async {
+  Future<Position>? _pendingPosition;
+
+  Future<Position> getCurrentPosition() =>
+      _pendingPosition ??= _readPosition().whenComplete(() {
+        _pendingPosition = null;
+      });
+
+  Future<Position> _readPosition() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {

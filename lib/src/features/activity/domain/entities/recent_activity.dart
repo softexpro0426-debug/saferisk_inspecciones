@@ -1,13 +1,17 @@
 final class RecentActivity {
   const RecentActivity({
-    required this.id,
+    required this.caseNumber,
     required this.titulo,
-    required this.estado,
+    required this.estadoActual,
+    required this.estadoSeguimiento,
     required this.fecha,
+    required this.insurerCode,
   });
 
-  final int id;
+  final int insurerCode;
+  final int caseNumber;
   final String titulo;
-  final String estado;
+  final String estadoActual;
+  final String estadoSeguimiento;
   final DateTime fecha;
 }

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/app_update/app_update_prompt.dart';
+import '../../../../core/security/session_lock_controller.dart';
 import '../controllers/splash_controller.dart';
 import '../controllers/splash_state.dart';
 import '../widgets/saferisk_brand.dart';
@@ -12,15 +14,23 @@ final class SplashPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(sessionLockProvider, (_, access) {
+      if (access.isUnlocked &&
+          ref.read(splashControllerProvider).asData?.value
+              is SplashAuthenticated) {
+        context.go('/home');
+      }
+    });
     ref.listen(splashControllerProvider, (previous, next) {
       next.whenData((splashState) {
         switch (splashState) {
           case SplashAuthenticated():
-            context.go('/home');
+            if (ref.read(sessionLockProvider).isUnlocked) context.go('/home');
 
           case SplashUnauthenticated():
             context.go('/login');
 
+          case SplashUpdateAvailable():
           case SplashLoading():
           case SplashFailure():
             break;
@@ -29,6 +39,27 @@ final class SplashPage extends ConsumerWidget {
     });
 
     final state = ref.watch(splashControllerProvider);
+
+    if (state.asData?.value case SplashUpdateAvailable(:final decision)) {
+      return Scaffold(
+        backgroundColor: AppColors.secondary,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: AppUpdatePrompt(
+                decision: decision,
+                onRetry: () =>
+                    ref.read(splashControllerProvider.notifier).retry(),
+                onContinue: () => ref
+                    .read(splashControllerProvider.notifier)
+                    .skipOptionalUpdate(),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.secondary,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/network/network_error_message.dart';
 import '../../../inspections/presentation/controllers/inspections_controller.dart';
 import '../../domain/entities/dashboard_action.dart';
 import '../controllers/dashboard_controller.dart';
@@ -40,6 +41,7 @@ final class DashboardPage extends ConsumerWidget {
                   return SliverFillRemaining(
                     hasScrollBody: false,
                     child: _DashboardError(
+                      message: networkErrorMessage(error),
                       onRetry: () {
                         ref
                             .read(dashboardControllerProvider.notifier)
@@ -60,7 +62,6 @@ final class DashboardPage extends ConsumerWidget {
                           icon: Icons.assignment_late_outlined,
                           onTap: () {
                             _openAction(
-                              context: context,
                               ref: ref,
                               action: DashboardAction.pending,
                             );
@@ -76,13 +77,6 @@ final class DashboardPage extends ConsumerWidget {
                                 title: 'Para hoy',
                                 value: dashboard.pendientesHoy,
                                 icon: Icons.today_outlined,
-                                onTap: () {
-                                  _openAction(
-                                    context: context,
-                                    ref: ref,
-                                    action: DashboardAction.pendingToday,
-                                  );
-                                },
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -93,7 +87,6 @@ final class DashboardPage extends ConsumerWidget {
                                 icon: Icons.task_alt_rounded,
                                 onTap: () {
                                   _openAction(
-                                    context: context,
                                     ref: ref,
                                     action: DashboardAction.completed,
                                   );
@@ -112,13 +105,6 @@ final class DashboardPage extends ConsumerWidget {
                                 title: 'Esta semana',
                                 value: dashboard.finalizadasSemana,
                                 icon: Icons.date_range_outlined,
-                                onTap: () {
-                                  _openAction(
-                                    context: context,
-                                    ref: ref,
-                                    action: DashboardAction.completedWeek,
-                                  );
-                                },
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -127,13 +113,6 @@ final class DashboardPage extends ConsumerWidget {
                                 title: 'Asignadas',
                                 value: dashboard.asignadas,
                                 icon: Icons.assignment_ind_outlined,
-                                onTap: () {
-                                  _openAction(
-                                    context: context,
-                                    ref: ref,
-                                    action: DashboardAction.assigned,
-                                  );
-                                },
                               ),
                             ),
                           ],
@@ -158,11 +137,7 @@ final class DashboardPage extends ConsumerWidget {
     );
   }
 
-  void _openAction({
-    required BuildContext context,
-    required WidgetRef ref,
-    required DashboardAction action,
-  }) {
+  void _openAction({required WidgetRef ref, required DashboardAction action}) {
     final controller = ref.read(inspectionsControllerProvider.notifier);
 
     final currentFilter = controller.filter;
@@ -170,15 +145,7 @@ final class DashboardPage extends ConsumerWidget {
     final nextFilter = switch (action) {
       DashboardAction.pending => currentFilter.copyWith(tipoConsulta: 'C'),
 
-      DashboardAction.pendingToday => currentFilter.copyWith(tipoConsulta: 'C'),
-
       DashboardAction.completed => currentFilter.copyWith(tipoConsulta: 'P'),
-
-      DashboardAction.completedWeek => currentFilter.copyWith(
-        tipoConsulta: 'P',
-      ),
-
-      DashboardAction.assigned => currentFilter.copyWith(tipoConsulta: 'C'),
     };
 
     controller.applyFilter(nextFilter);
@@ -330,13 +297,13 @@ final class _MetricCard extends StatelessWidget {
     required this.title,
     required this.value,
     required this.icon,
-    required this.onTap,
+    this.onTap,
   });
 
   final String title;
   final int value;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -482,7 +449,8 @@ final class _DashboardLoading extends StatelessWidget {
 }
 
 final class _DashboardError extends StatelessWidget {
-  const _DashboardError({required this.onRetry});
+  const _DashboardError({required this.onRetry, required this.message});
+  final String message;
 
   final VoidCallback onRetry;
 
@@ -509,8 +477,8 @@ final class _DashboardError extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 7),
-            const Text(
-              'Comprueba tu conexión e inténtalo nuevamente.',
+            Text(
+              message,
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.neutralDark, fontSize: 13),
             ),

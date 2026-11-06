@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../domain/entities/recent_activity.dart';
+import '../../../../core/config/pending_api_config.dart';
 
 final class RecentActivityRemoteDataSource {
   const RecentActivityRemoteDataSource(this._dio);
@@ -11,7 +12,7 @@ final class RecentActivityRemoteDataSource {
     required String usuario,
   }) async {
     final response = await _dio.get<dynamic>(
-      'api/consulta/actividad-reciente',
+      'api/movil/actividad-reciente',
       queryParameters: <String, dynamic>{'usuario': usuario},
     );
     final data = response.data;
@@ -23,21 +24,36 @@ final class RecentActivityRemoteDataSource {
         if (entry is! Map<String, dynamic>) {
           throw const FormatException('Registro de actividad inválido.');
         }
-        final id = entry['id'];
+        final caseNumber = entry['caso'];
         final titulo = entry['titulo'];
-        final estado = entry['estado'];
+        final estadoActual = entry['estadoActual'];
+        final estadoSeguimiento = entry['estadoSeguimiento'];
         final rawDate = entry['fecha'];
         final fecha = rawDate is String ? DateTime.tryParse(rawDate) : null;
-        if (id is! int ||
+        if (caseNumber is! int ||
+            caseNumber <= 0 ||
             titulo is! String ||
-            estado is! String ||
+            estadoActual is! String ||
+            estadoSeguimiento is! String ||
             fecha == null) {
-          throw const FormatException('Campos de actividad inválidos.');
+          throw FormatException(
+            'Actividad: campos inválidos '
+            '(caso=${caseNumber.runtimeType}, titulo=${titulo.runtimeType}, '
+            'estadoActual=${estadoActual.runtimeType}, '
+            'estadoSeguimiento=${estadoSeguimiento.runtimeType}, '
+            'fecha=${rawDate.runtimeType}, fechaValida=${fecha != null}).',
+          );
+        }
+        final insurer = entry[PendingApiConfig.insurerField];
+        if (insurer is! int || insurer <= 0) {
+          throw const FormatException('Aseguradora de actividad inválida.');
         }
         return RecentActivity(
-          id: id,
+          insurerCode: insurer,
+          caseNumber: caseNumber,
           titulo: titulo,
-          estado: estado,
+          estadoActual: estadoActual,
+          estadoSeguimiento: estadoSeguimiento,
           fecha: fecha,
         );
       }),

@@ -1,7 +1,1 @@
-enum DashboardAction {
-  pending,
-  pendingToday,
-  completed,
-  completedWeek,
-  assigned,
-}
+enum DashboardAction { pending, completed }

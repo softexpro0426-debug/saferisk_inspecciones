@@ -41,7 +41,7 @@ final class _MainShellPageState extends State<MainShellPage> {
     final pages = <Widget>[
       DashboardPage(onOpenInspections: _openInspections),
       const InspectionsPage(),
-      ActivityPage(onOpenInspections: _openInspections),
+      const ActivityPage(),
       const ProfilePage(),
     ];
 

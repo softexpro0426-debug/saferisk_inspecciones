@@ -1,413 +1,149 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../domain/entities/activity_case.dart';
-import '../../domain/entities/activity_summary.dart';
-import '../../domain/entities/recent_activity.dart';
 import '../../../../core/network/network_error_message.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../inspections/domain/entities/activity_workflow_resolver.dart';
+import '../../../inspections/domain/entities/operational_inspection.dart';
+import '../../../inspections/presentation/pages/operational_inspection_page.dart';
+import '../../domain/entities/activity_overview.dart';
+import '../../domain/entities/recent_activity.dart';
 import '../controller/recent_activity_controller.dart';
-import '../controller/activity_controller.dart';
 
 final class ActivityPage extends ConsumerWidget {
-  const ActivityPage({this.onOpenInspections, super.key});
-
-  final VoidCallback? onOpenInspections;
+  const ActivityPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(activityControllerProvider);
-    final recentState = ref.watch(recentActivityControllerProvider);
-
+    final state = ref.watch(recentActivityControllerProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {
-            await Future.wait([
-              ref.read(activityControllerProvider.notifier).refresh(),
+          onRefresh: () =>
               ref.read(recentActivityControllerProvider.notifier).refresh(),
-            ]);
-          },
-          child: ListView(
+          child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 120),
-            children: [
-              const _Header(),
-              const SizedBox(height: 20),
-              state.when(
-                loading: () => const _LoadingView(),
-                error: (error, _) => _ErrorView(
-                  message: error is ActivityException
-                      ? error.message
-                      : 'No fue posible cargar el resumen.',
-                  onRetry: () =>
-                      ref.read(activityControllerProvider.notifier).refresh(),
-                ),
-                data: (summary) => _ActivityContent(
-                  summary: summary,
-                  onOpenInspections: onOpenInspections,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const _SectionHeader(
-                title: 'Actividad reciente',
-                subtitle: 'Últimos movimientos',
-              ),
-              const SizedBox(height: 10),
-              recentState.when(
-                loading: () => const _LoadingView(),
-                error: (error, _) => _ErrorView(
-                  message: networkErrorMessage(error),
-                  onRetry: () => ref
-                      .read(recentActivityControllerProvider.notifier)
-                      .refresh(),
-                ),
-                data: (items) => items.isEmpty
-                    ? const _EmptyActivityCard()
-                    : _RecentActivityCard(items: items),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-final class _ActivityContent extends StatelessWidget {
-  const _ActivityContent({
-    required this.summary,
-    required this.onOpenInspections,
-  });
-
-  final ActivitySummary summary;
-  final VoidCallback? onOpenInspections;
-
-  @override
-  Widget build(BuildContext context) {
-    final completedToday = summary.completedToday(DateTime.now());
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _MetricCard(
-                value: '${summary.pendingCount}',
-                label: 'Pendientes',
-                icon: Icons.pending_actions_rounded,
-                color: Colors.orange,
-                onTap: onOpenInspections,
-              ),
-            ),
-
-            const SizedBox(width: 12),
-
-            Expanded(
-              child: _MetricCard(
-                value: '$completedToday',
-                label: 'Finalizadas hoy',
-                icon: Icons.task_alt_rounded,
-                color: Colors.green,
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 24),
-
-        _SectionHeader(
-          title: 'Pendientes de atención',
-          subtitle: summary.pendingCount == 1
-              ? '1 inspección pendiente'
-              : '${summary.pendingCount} inspecciones pendientes',
-          actionLabel: 'Ver todas',
-          onAction: onOpenInspections,
-        ),
-
-        const SizedBox(height: 10),
-
-        if (summary.pending.isEmpty)
-          const _EmptyPendingCard()
-        else
-          ...summary.pending
-              .take(5)
-              .map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _PendingCaseCard(item: item, onTap: onOpenInspections),
-                ),
-              ),
-      ],
-    );
-  }
-}
-
-final class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Actividad',
-          style: TextStyle(
-            color: AppColors.secondary,
-            fontSize: 25,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
-        ),
-        SizedBox(height: 5),
-        Text(
-          'Resumen de tus inspecciones.',
-          style: TextStyle(color: AppColors.neutralDark, fontSize: 13),
-        ),
-      ],
-    );
-  }
-}
-
-final class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.color,
-    this.onTap,
-  });
-
-  final String value;
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE4EAF0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-
-              const SizedBox(height: 14),
-
-              Text(
-                value,
-                style: const TextStyle(
-                  color: AppColors.secondary,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-
-              const SizedBox(height: 3),
-
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.neutralDark,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-final class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.subtitle,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  final String title;
-  final String subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppColors.secondary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: AppColors.neutralDark,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        if (actionLabel != null && onAction != null)
-          TextButton(onPressed: onAction, child: Text(actionLabel!)),
-      ],
-    );
-  }
-}
-
-final class _PendingCaseCard extends StatelessWidget {
-  const _PendingCaseCard({required this.item, required this.onTap});
-
-  final ActivityCase item;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final status = item.estado.trim().isEmpty ? 'En curso' : item.estado.trim();
-
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(15),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(15),
-        child: Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: const Color(0xFFE4EAF0)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.pending_actions_rounded,
-                  color: Colors.orange,
-                  size: 21,
-                ),
-              ),
-
-              const SizedBox(width: 13),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Caso #${item.nroCaso}',
-                      style: const TextStyle(
-                        color: AppColors.secondary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    Text(
-                      item.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.neutralDark,
-                        fontSize: 12.5,
-                      ),
-                    ),
-
-                    if (item.vehicle.isNotEmpty) ...[
-                      const SizedBox(height: 3),
+            slivers: [
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(20, 18, 20, 24),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        item.vehicle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        'Actividad',
                         style: TextStyle(
-                          color: AppColors.neutralDark.withValues(alpha: 0.72),
-                          fontSize: 11.5,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.secondary,
                         ),
                       ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Continúa tus inspecciones y revisa tus movimientos.',
+                        style: TextStyle(color: AppColors.neutralDark),
+                      ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-
-              const SizedBox(width: 8),
-
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 110),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      status,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.orange,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+              ...state.when(
+                loading: () => const <Widget>[
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ],
+                error: (error, _) => <Widget>[
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.cloud_off_rounded,
+                            size: 44,
+                            color: AppColors.neutralDark,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            networkErrorMessage(error),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton(
+                            onPressed: () => ref
+                                .read(recentActivityControllerProvider.notifier)
+                                .refresh(),
+                            child: const Text('Reintentar'),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 6),
-
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.neutralDark,
-                    size: 20,
-                  ),
                 ],
+                data: (events) {
+                  final overview = ActivityOverview(events);
+                  return <Widget>[
+                    const SliverPadding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverToBoxAdapter(
+                        child: _SectionTitle('En curso'),
+                      ),
+                    ),
+                    if (overview.inProgress.isEmpty)
+                      const SliverPadding(
+                        padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+                        sliver: SliverToBoxAdapter(
+                          child: _EmptyCard(
+                            'No tienes inspecciones en curso.',
+                            Icons.task_alt_outlined,
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                        sliver: SliverList.separated(
+                          itemCount: overview.inProgress.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (_, index) =>
+                              _InProgressCard(overview.inProgress[index]),
+                        ),
+                      ),
+                    const SliverPadding(
+                      padding: EdgeInsets.fromLTRB(20, 28, 20, 12),
+                      sliver: SliverToBoxAdapter(
+                        child: _SectionTitle('Últimos movimientos'),
+                      ),
+                    ),
+                    if (overview.history.isEmpty)
+                      const SliverPadding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        sliver: SliverToBoxAdapter(
+                          child: _EmptyCard(
+                            'Todavía no hay movimientos para mostrar.',
+                            Icons.history_rounded,
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        sliver: SliverList.separated(
+                          itemCount: overview.history.length,
+                          separatorBuilder: (_, _) => const Divider(height: 28),
+                          itemBuilder: (_, index) =>
+                              _HistoryRow(overview.history[index]),
+                        ),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                  ];
+                },
               ),
             ],
           ),
@@ -417,62 +153,106 @@ final class _PendingCaseCard extends StatelessWidget {
   }
 }
 
-final class _RecentActivityCard extends StatelessWidget {
-  const _RecentActivityCard({required this.items});
-
-  final List<RecentActivity> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4EAF0)),
-      ),
-      child: Column(
-        children: [
-          for (var index = 0; index < items.length; index++) ...[
-            _ActivityRow(item: items[index]),
-            if (index != items.length - 1) const Divider(height: 22),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-final class _ActivityRow extends StatelessWidget {
-  const _ActivityRow({required this.item});
-
+final class _InProgressCard extends StatelessWidget {
+  const _InProgressCard(this.item);
   final RecentActivity item;
 
   @override
   Widget build(BuildContext context) {
-    final completed = item.estado.trim().toUpperCase() == 'FINALIZADO';
+    final status = ActivityWorkflowResolver.knownStatus(item.estadoActual)!;
+    final (color, icon) = _appearance(status);
+    final label = switch (status) {
+      OperationalStatus.enRoute => 'En camino',
+      OperationalStatus.arrived => 'En el lugar',
+      _ => 'Inspección en curso',
+    };
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: OperationalCaseLink(
+          query: (caseNumber: item.caseNumber, insurerCode: item.insurerCode),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.titulo,
+                style: const TextStyle(
+                  color: AppColors.secondary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(icon, color: color, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Continuar · ${status.nextAction!}',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-    final color = completed ? Colors.green : AppColors.primary;
+final class _HistoryRow extends StatelessWidget {
+  const _HistoryRow(this.item);
+  final RecentActivity item;
 
+  @override
+  Widget build(BuildContext context) {
+    final status = ActivityWorkflowResolver.knownStatus(item.estadoSeguimiento);
+    final (color, icon) = _appearance(status);
+    final text = switch (status) {
+      OperationalStatus.assigned => 'Inspección asignada',
+      OperationalStatus.enRoute => 'Salida registrada',
+      OperationalStatus.arrived => 'Llegada confirmada',
+      OperationalStatus.started => 'Inspección iniciada',
+      OperationalStatus.completed => 'Inspección finalizada',
+      _ => switch (item.estadoSeguimiento.trim().toUpperCase()) {
+        'ASEGURABLE' => 'Asegurable',
+        'COORDINADO' => 'Coordinado',
+        'FALLIDO' => 'Fallido',
+        _ =>
+          item.estadoSeguimiento.trim().isEmpty
+              ? 'Movimiento registrado'
+              : item.estadoSeguimiento.trim(),
+      },
+    };
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 38,
-          height: 38,
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            completed ? Icons.task_alt_rounded : Icons.history_rounded,
-            color: color,
-            size: 19,
-          ),
+          child: Icon(icon, color: color, size: 20),
         ),
-
         const SizedBox(width: 12),
-
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,204 +261,94 @@ final class _ActivityRow extends StatelessWidget {
                 item.titulo,
                 style: const TextStyle(
                   color: AppColors.secondary,
-                  fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-
               const SizedBox(height: 4),
-
+              Text(text, style: TextStyle(color: color)),
+              const SizedBox(height: 4),
               Text(
-                item.estado,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                _formatDate(item.fecha),
                 style: const TextStyle(
                   color: AppColors.neutralDark,
                   fontSize: 12,
                 ),
               ),
-
-              ...[
-                const SizedBox(height: 4),
-                Text(
-                  _formatDate(item.fecha),
-                  style: TextStyle(
-                    color: AppColors.neutralDark.withValues(alpha: 0.65),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
       ],
     );
   }
-
-  static String _formatDate(DateTime value) {
-    final now = DateTime.now();
-
-    final today =
-        value.year == now.year &&
-        value.month == now.month &&
-        value.day == now.day;
-
-    final hour = value.hour.toString().padLeft(2, '0');
-
-    final minute = value.minute.toString().padLeft(2, '0');
-
-    if (today) {
-      return 'Hoy · $hour:$minute';
-    }
-
-    final day = value.day.toString().padLeft(2, '0');
-
-    final month = value.month.toString().padLeft(2, '0');
-
-    return '$day/$month/${value.year} · $hour:$minute';
-  }
 }
 
-final class _EmptyPendingCard extends StatelessWidget {
-  const _EmptyPendingCard();
-
+final class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+  final String text;
   @override
-  Widget build(BuildContext context) {
-    return const _EmptyCard(
-      icon: Icons.task_alt_rounded,
-      title: 'Sin pendientes',
-      message: 'No tienes inspecciones pendientes.',
-    );
-  }
-}
-
-final class _EmptyActivityCard extends StatelessWidget {
-  const _EmptyActivityCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const _EmptyCard(
-      icon: Icons.history_rounded,
-      title: 'Sin actividad reciente',
-      message: 'No hay movimientos para mostrar.',
-    );
-  }
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      color: AppColors.secondary,
+      fontSize: 18,
+      fontWeight: FontWeight.w800,
+    ),
+  );
 }
 
 final class _EmptyCard extends StatelessWidget {
-  const _EmptyCard({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
+  const _EmptyCard(this.text, this.icon);
+  final String text;
   final IconData icon;
-  final String title;
-  final String message;
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4EAF0)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 28),
-
-          const SizedBox(height: 10),
-
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.secondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-            ),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, color: AppColors.neutralDark),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(color: AppColors.neutralDark),
           ),
-
-          const SizedBox(height: 5),
-
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.neutralDark,
-              fontSize: 12.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-final class _LoadingView extends StatelessWidget {
-  const _LoadingView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator());
-  }
-}
-
-final class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              color: AppColors.neutralDark,
-              size: 46,
-            ),
-
-            const SizedBox(height: 16),
-
-            const Text(
-              'No pudimos cargar la actividad',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.secondary,
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-
-            const SizedBox(height: 7),
-
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.neutralDark,
-                fontSize: 13,
-              ),
-            ),
-
-            const SizedBox(height: 18),
-
-            OutlinedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Reintentar'),
-            ),
-          ],
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
+
+(Color, IconData) _appearance(OperationalStatus? status) => switch (status) {
+  OperationalStatus.enRoute => (
+    AppColors.primary,
+    Icons.directions_car_rounded,
+  ),
+  OperationalStatus.arrived => (
+    const Color(0xFF946200),
+    Icons.location_on_rounded,
+  ),
+  OperationalStatus.started => (
+    const Color(0xFF7541A6),
+    Icons.assignment_rounded,
+  ),
+  OperationalStatus.completed => (AppColors.success, Icons.task_alt_rounded),
+  _ => (AppColors.neutralDark, Icons.history_rounded),
+};
+
+String _formatDate(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(date.year, date.month, date.day);
+  String pad(int value) => value.toString().padLeft(2, '0');
+  final time = '${pad(date.hour)}:${pad(date.minute)}';
+  final prefix = day == today
+      ? 'Hoy'
+      : day == DateTime(now.year, now.month, now.day - 1)
+      ? 'Ayer'
+      : '${pad(date.day)}/${pad(date.month)}/${date.year}';
+  return '$prefix · $time';
 }

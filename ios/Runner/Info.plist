@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Usa Face ID para desbloquear tu sesión de SafeRisk.</string>
 		<!-- Permisos de Cámara y Galería -->
 		<key>NSCameraUsageDescription</key>
 		<string>SafeRisk requiere acceso a la cámara para tomar fotografías y capturar evidencias de la inspección.</string>

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/security/session_lock_controller.dart';
 import '../controllers/login_controller.dart';
 import '../controllers/login_state.dart';
 import '../widgets/saferisk_login_header.dart';
@@ -100,7 +101,7 @@ final class _LoginPageState extends ConsumerState<LoginPage>
       case UserType.inspector:
         HapticFeedback.lightImpact();
 
-        if (!mounted) {
+        if (!mounted || !ref.read(sessionLockProvider).isUnlocked) {
           return;
         }
 
@@ -188,6 +189,12 @@ final class _LoginPageState extends ConsumerState<LoginPage>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(sessionLockProvider, (_, access) {
+      final login = ref.read(loginControllerProvider);
+      if (access.isUnlocked && login is LoginSuccess) {
+        _handleLoginSuccess(login.session.tipoUsuario);
+      }
+    });
     ref.listen<LoginState>(loginControllerProvider, (previous, next) {
       switch (next) {
         case LoginSuccess(:final session):
